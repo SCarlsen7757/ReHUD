@@ -7,7 +7,7 @@ namespace ReHUD.Models;
 
 public struct R3EExtraData
 {
-    public R3EData rawData;
+    internal R3E.Data.Shared rawData;
 
     public int? lapId;
     public double? lastLapTime;
@@ -42,23 +42,31 @@ public struct R3EExtraData
     /// Serialize this object to JSON.
     /// </summary>
     /// <param name="filter">If not null, only include these keys in the output. Keys starting with '+' are keys from ExtraData, other keys are from the rawData field.</param>
-    public readonly string Serialize(string[]? filter = null) {
+    public readonly string Serialize(string[]? filter = null)
+    {
         var obj = JObject.FromObject(this);
 
-        if (filter != null) {
-            var newObj = new JObject {
+        if (filter != null)
+        {
+            var newObj = new JObject
+            {
                 ["rawData"] = new JObject()
             };
-            foreach (var key in filter) {
-                try {
-                    if (key.StartsWith('+')) {
+            foreach (var key in filter)
+            {
+                try
+                {
+                    if (key.StartsWith('+'))
+                    {
                         newObj[key[1..]] = obj[key[1..]];
                     }
-                    else {
+                    else
+                    {
                         newObj["rawData"]![key] = obj["rawData"]![key];
                     }
                 }
-                catch (Exception e) {
+                catch (Exception e)
+                {
                     Startup.logger.Error($"Failed to serialize shared memory key '{key}'", e);
                     throw;
                 }
@@ -68,8 +76,10 @@ public struct R3EExtraData
         return obj.ToString();
     }
 
-    public static R3EExtraData NewEmpty() {
-        return new R3EExtraData {
+    public static R3EExtraData NewEmpty()
+    {
+        return new R3EExtraData
+        {
             fuelPerLap = 0,
             fuelLastLap = 0,
             tireWearPerLap = new TireWearObj(),
@@ -95,8 +105,9 @@ public struct R3EExtraData
             currentLaptime = null,
 
             forceUpdateAll = true,
-            rawData = new R3EData {
-                driverData = Array.Empty<DriverData>(),
+            rawData = new Shared
+            {
+                DriverData = Array.Empty<DriverData>(),
             },
             timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
         };

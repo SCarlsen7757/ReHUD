@@ -1,14 +1,15 @@
-using System.Collections.Immutable;
-using System.Reflection;
 using log4net;
 using R3E;
 using R3E.Data;
 using ReHUD.Interfaces;
 using ReHUD.Utils;
+using System.Collections.Immutable;
+using System.Reflection;
 
 namespace ReHUD.Services;
 
-public class EventService : IEventService {
+public class EventService : IEventService
+{
     private static readonly ILog logger = LogManager.GetLogger(typeof(R3EDataService));
     private static readonly float CLOSE_THRESHOLD = 20f;
 
@@ -34,23 +35,30 @@ public class EventService : IEventService {
     private readonly List<IEventRaiser> valueListeners = new();
     private readonly List<EventLog> eventLogs = new();
 
-    public EventService() { // TODO: Verify push to pass events
-        try {
+    public EventService()
+    { // TODO: Verify push to pass events
+        try
+        {
             RegisterDefaultHandlers();
             RegisterValueListeners();
-        } catch (Exception e) {
+        }
+        catch (Exception e)
+        {
             logger.Error("Failed to initialize event service", e);
         }
     }
 
-    private void RegisterDefaultHandlers() {
+    private void RegisterDefaultHandlers()
+    {
         logger.Info("Registering default handlers");
 
         var eventFields = GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Instance).Where(f => f.FieldType.IsGenericType && f.FieldType.GetGenericTypeDefinition() == typeof(EventHandler<>));
-        foreach (var field in eventFields) {
+        foreach (var field in eventFields)
+        {
             var eventName = field.Name;
             var eventType = field.FieldType.GetGenericArguments();
-            if (eventType[0].GetGenericArguments().Length == 1) {
+            if (eventType[0].GetGenericArguments().Length == 1)
+            {
                 eventType = new Type[] { eventType[0], eventType[0].GetGenericArguments()[0] };
             }
             var handler = GetType().GetMethods(BindingFlags.NonPublic | BindingFlags.Instance).Single(m => m.Name == "GetDefaultHandler" && m.IsGenericMethod && m.GetGenericArguments().Length == eventType.Length)!.MakeGenericMethod(eventType).Invoke(this, new object[] { eventName });
@@ -59,12 +67,16 @@ public class EventService : IEventService {
     }
 
 
-    private EventHandler<T> GetDefaultHandler<T>(string name) where T : BaseEventArgs {
-        return (sender, e) => {
-            switch (e) {
+    private EventHandler<T> GetDefaultHandler<T>(string name) where T : BaseEventArgs
+    {
+        return (sender, e) =>
+        {
+            switch (e)
+            {
                 case DriverEventArgs driverEventArgs:
-                    if (driverEventArgs.IsMainDriver) {
-                        logger.InfoFormat("'{0}' event raised for '{1}' (main driver)", name, DriverUtils.GetDriverName(driverEventArgs.Driver.driverInfo));
+                    if (driverEventArgs.IsMainDriver)
+                    {
+                        logger.InfoFormat("'{0}' event raised for '{1}' (main driver)", name, DriverUtils.GetDriverName(driverEventArgs.Driver.DriverInfo));
                     }
                     eventLogs.Add(new DriverEventLog(name, driverEventArgs.Driver, driverEventArgs.IsMainDriver));
                     break;
@@ -76,76 +88,91 @@ public class EventService : IEventService {
         };
     }
 
-    private EventHandler<T> GetDefaultHandler<T, S>(string name) where T : ValueEventArgs<S> where S: struct {
-        return (sender, e) => {
-            if (e is ValueEventArgs<S> valueEventArgs) {
+    private EventHandler<T> GetDefaultHandler<T, S>(string name) where T : ValueEventArgs<S> where S : struct
+    {
+        return (sender, e) =>
+        {
+            if (e is ValueEventArgs<S> valueEventArgs)
+            {
                 logger.InfoFormat("'{0}' event raised: {1} -> {2}", name, valueEventArgs.OldValue, valueEventArgs.NewValue);
                 eventLogs.Add(new ValueEventLog<S>(name, valueEventArgs.OldValue, valueEventArgs.NewValue));
             }
         };
     }
 
-    private void RegisterValueListeners() {
+    private void RegisterValueListeners()
+    {
         logger.Info("Registering value listeners");
 
 
-        valueListeners.Add(new DriverEventRaiser(() => PositionJump, (oldData, newData, oldDriver, newDriver, isMainDriver) => {
-            return newDriver.place == newData.position && oldData.controlType != newData.controlType && (Constant.Control)newData.controlType != Constant.Control.Player;
+        valueListeners.Add(new DriverEventRaiser(() => PositionJump, (oldData, newData, oldDriver, newDriver, isMainDriver) =>
+        {
+            return newDriver.Place == newData.Position && oldData.ControlType != newData.ControlType && (Constant.Control)newData.ControlType != Constant.Control.Player;
         }));
 
-        valueListeners.Add(new ValueChangeListener<Constant.Session>(() => SessionChange, data => (Constant.Session)data.sessionType));
-        valueListeners.Add(new ValueChangeListener<Constant.SessionPhase>(() => SessionPhaseChange, data => (Constant.SessionPhase)data.sessionPhase));
-        valueListeners.Add(new ValueChangeListener<int>(() => CarChange, data => data.vehicleInfo.modelId));
-        valueListeners.Add(new ValueChangeListener<int>(() => TrackChange, data => data.layoutId));
+        valueListeners.Add(new ValueChangeListener<Constant.Session>(() => SessionChange, data => (Constant.Session)data.SessionType));
+        valueListeners.Add(new ValueChangeListener<Constant.SessionPhase>(() => SessionPhaseChange, data => (Constant.SessionPhase)data.SessionPhase));
+        valueListeners.Add(new ValueChangeListener<int>(() => CarChange, data => data.VehicleInfo.ModelId));
+        valueListeners.Add(new ValueChangeListener<int>(() => TrackChange, data => data.LayoutId));
 
-        valueListeners.Add(new ModeSwitchListener(() => GamePause, () => GameResume, data => data.gamePaused == 1));
-        valueListeners.Add(new ModeSwitchListener(() => EnterReplay, () => ExitReplay, data => data.gameInReplay == 1));
-        valueListeners.Add(new ModeSwitchListener(() => PushToPassActivate, () => PushToPassDeactivate, data => data.pushToPass.engaged == 1, false));
-        valueListeners.Add(new ModeSwitchListener(() => PushToPassReady, () => null, data => data.pushToPass.available == 1 && data.pushToPass.engaged == 0 && data.pushToPass.waitTimeLeft == 0, false));
+        valueListeners.Add(new ModeSwitchListener(() => GamePause, () => GameResume, data => data.GamePaused == 1));
+        valueListeners.Add(new ModeSwitchListener(() => EnterReplay, () => ExitReplay, data => data.GameInReplay == 1));
+        valueListeners.Add(new ModeSwitchListener(() => PushToPassActivate, () => PushToPassDeactivate, data => data.PushToPass.Engaged == 1, false));
+        valueListeners.Add(new ModeSwitchListener(() => PushToPassReady, () => null, data => data.PushToPass.Available == 1 && data.PushToPass.Engaged == 0 && data.PushToPass.WaitTimeLeft == 0, false));
 
         // valueListeners.Add(new DriverModeSwitchListener(() => MainDriverChange, () => null, (data, driver) => driver.place == data.position, true));
-        valueListeners.Add(new DriverModeSwitchListener(() => EnterPitlane, () => ExitPitlane, (data, driver) => driver.inPitlane == 1, true));
+        valueListeners.Add(new DriverModeSwitchListener(() => EnterPitlane, () => ExitPitlane, (data, driver) => driver.InPitlane == 1, true));
 
-        valueListeners.Add(new DriverEventRaiser(() => NewLap, (oldData, newData, oldDriver, newDriver, isMainDriver) => {
-            return oldDriver.inPitlane == newDriver.inPitlane // If pitlane status changed, driver probably reset back to pits.
-                && (!isMainDriver || oldData.controlType == (int)Constant.Control.Player) // Control type is only available for main driver.
-                && (!isMainDriver || newData.controlType == (int)Constant.Control.Player)
-                && oldDriver.lapDistance >= oldData.layoutLength - CLOSE_THRESHOLD
-                && newDriver.lapDistance < CLOSE_THRESHOLD;
+        valueListeners.Add(new DriverEventRaiser(() => NewLap, (oldData, newData, oldDriver, newDriver, isMainDriver) =>
+        {
+            return oldDriver.InPitlane == newDriver.InPitlane // If pitlane status changed, driver probably reset back to pits.
+                && (!isMainDriver || oldData.ControlType == (int)Constant.Control.Player) // Control type is only available for main driver.
+                && (!isMainDriver || newData.ControlType == (int)Constant.Control.Player)
+                && oldDriver.LapDistance >= oldData.LayoutLength - CLOSE_THRESHOLD
+                && newDriver.LapDistance < CLOSE_THRESHOLD;
         }));
     }
 
 
-    public R3EData? OldData { get; private set; } = null;
-    public R3EData? NewData { get; private set; } = null;
+    public Shared? OldData { get; private set; } = null;
+    public Shared? NewData { get; private set; } = null;
     public List<Tuple<DriverData, DriverData>>? DriverMatches { get; private set; } = null;
 
 
-    public ICollection<EventLog> Cycle(R3EData data) {
-        lock (lockObject) {
+    public ICollection<EventLog> Cycle(Shared data)
+    {
+        lock (lockObject)
+        {
             OldData = NewData;
             NewData = data;
 
             eventLogs.Clear();
 
-            if (OldData != null) {
-                DriverMatches = Utilities.GetDriverMatches(OldData.Value.driverData, NewData.Value.driverData);
+            if (OldData != null)
+            {
+                DriverMatches = Utilities.GetDriverMatches(OldData.Value.DriverData, NewData.Value.DriverData);
             }
             ProcessValueListeners();
-            
+
             return ImmutableList.CreateRange(eventLogs);
         }
     }
 
-    public void MainDriverChanged(R3EData data, DriverData driver) {
+    public void MainDriverChanged(Shared data, DriverData driver)
+    {
         MainDriverChange?.Invoke(this, new DriverEventArgs(null, data, driver, true));
     }
 
-    private void ProcessValueListeners() {
-        foreach (var listener in valueListeners) {
-            try {
+    private void ProcessValueListeners()
+    {
+        foreach (var listener in valueListeners)
+        {
+            try
+            {
                 listener.MaybeRaise(this);
-            } catch (Exception e) {
+            }
+            catch (Exception e)
+            {
                 logger.Error("Failed to process value listener", e);
             }
         }
@@ -153,34 +180,42 @@ public class EventService : IEventService {
 }
 
 
-public interface IEventRaiser {
+public interface IEventRaiser
+{
     void MaybeRaise(EventService service);
 }
 
 
-public class ValueChangeListener<T> : IEventRaiser where T : struct {
+public class ValueChangeListener<T> : IEventRaiser where T : struct
+{
     private readonly Func<EventHandler<ValueEventArgs<T>>?> eventHandlerGetter;
-    private readonly Func<R3EData, T> valueGetter;
+    private readonly Func<Shared, T> valueGetter;
     private readonly bool raiseOnStart;
 
 
-    public ValueChangeListener(Func<EventHandler<ValueEventArgs<T>>?> eventHandlerGetter, Func<R3EData, T> valueGetter, bool raiseOnStart = true) {
+    public ValueChangeListener(Func<EventHandler<ValueEventArgs<T>>?> eventHandlerGetter, Func<Shared, T> valueGetter, bool raiseOnStart = true)
+    {
         this.eventHandlerGetter = eventHandlerGetter;
         this.valueGetter = valueGetter;
         this.raiseOnStart = raiseOnStart;
     }
 
-    public void MaybeRaise(EventService service) {
-        R3EData newData = service.NewData!.Value;
+    public void MaybeRaise(EventService service)
+    {
+        Shared newData = service.NewData!.Value;
         var newValue = valueGetter(newData);
 
-        if (service.OldData == null && raiseOnStart) {
+        if (service.OldData == null && raiseOnStart)
+        {
             eventHandlerGetter()?.Invoke(this, new ValueEventArgs<T>(null, newData, null, newValue));
-        } else if (service.OldData != null) {
+        }
+        else if (service.OldData != null)
+        {
             var oldData = service.OldData!.Value;
             var oldValue = valueGetter(oldData);
 
-            if (!oldValue.Equals(newValue)) {
+            if (!oldValue.Equals(newValue))
+            {
                 eventHandlerGetter()?.Invoke(this, new ValueEventArgs<T>(oldData, newData, oldValue, newValue));
             }
         }
@@ -188,33 +223,45 @@ public class ValueChangeListener<T> : IEventRaiser where T : struct {
 }
 
 
-public class ModeSwitchListener : IEventRaiser {
+public class ModeSwitchListener : IEventRaiser
+{
     private readonly Func<EventHandler<BaseEventArgs>?> enterModeHandler;
     private readonly Func<EventHandler<BaseEventArgs>?> exitModeHandler;
-    private readonly Func<R3EData, bool> modeChecker;
+    private readonly Func<Shared, bool> modeChecker;
     private readonly bool raiseOnStart;
 
-    public ModeSwitchListener(Func<EventHandler<BaseEventArgs>?> enterModeHandler, Func<EventHandler<BaseEventArgs>?> exitModeHandler, Func<R3EData, bool> modeChecker, bool raiseOnStart = true) {
+    public ModeSwitchListener(Func<EventHandler<BaseEventArgs>?> enterModeHandler, Func<EventHandler<BaseEventArgs>?> exitModeHandler, Func<Shared, bool> modeChecker, bool raiseOnStart = true)
+    {
         this.enterModeHandler = enterModeHandler;
         this.exitModeHandler = exitModeHandler;
         this.modeChecker = modeChecker;
         this.raiseOnStart = raiseOnStart;
     }
 
-    public void MaybeRaise(EventService service) {
+    public void MaybeRaise(EventService service)
+    {
         var newData = service.NewData!.Value;
-        if (service.OldData == null && raiseOnStart) {
-            if (modeChecker(newData)) {
+        if (service.OldData == null && raiseOnStart)
+        {
+            if (modeChecker(newData))
+            {
                 enterModeHandler()?.Invoke(this, new BaseEventArgs(null, newData));
-            } else {
+            }
+            else
+            {
                 exitModeHandler()?.Invoke(this, new BaseEventArgs(null, newData));
             }
-        } else if (service.OldData != null) {
+        }
+        else if (service.OldData != null)
+        {
             var oldData = service.OldData!.Value;
 
-            if (!modeChecker(oldData) && modeChecker(newData)) {
+            if (!modeChecker(oldData) && modeChecker(newData))
+            {
                 enterModeHandler()?.Invoke(this, new BaseEventArgs(oldData, newData));
-            } else if (modeChecker(oldData) && !modeChecker(newData)) {
+            }
+            else if (modeChecker(oldData) && !modeChecker(newData))
+            {
                 exitModeHandler()?.Invoke(this, new BaseEventArgs(oldData, newData));
             }
         }
@@ -222,65 +269,85 @@ public class ModeSwitchListener : IEventRaiser {
 }
 
 
-public class DriverEventRaiser : IEventRaiser {
+public class DriverEventRaiser : IEventRaiser
+{
     private readonly Func<EventHandler<DriverEventArgs>?> eventHandlerGetter;
-    private readonly Func<R3EData, R3EData, DriverData, DriverData, bool, bool> eventChecker;
+    private readonly Func<Shared, Shared, DriverData, DriverData, bool, bool> eventChecker;
 
-    public DriverEventRaiser(Func<EventHandler<DriverEventArgs>?> eventHandlerGetter, Func<R3EData, R3EData, DriverData, DriverData, bool, bool> eventChecker) {
+    public DriverEventRaiser(Func<EventHandler<DriverEventArgs>?> eventHandlerGetter, Func<Shared, Shared, DriverData, DriverData, bool, bool> eventChecker)
+    {
         this.eventHandlerGetter = eventHandlerGetter;
         this.eventChecker = eventChecker;
     }
 
-    public void MaybeRaise(EventService service) {
-        if (service.OldData == null) {
+    public void MaybeRaise(EventService service)
+    {
+        if (service.OldData == null)
+        {
             return;
         }
 
         var oldData = service.OldData!.Value;
         var newData = service.NewData!.Value;
         var driverMatches = service.DriverMatches!;
-        foreach (var (oldDriver, newDriver) in driverMatches) {
-            var isMainDriver = newDriver.place == newData.position;
-            if (eventChecker(oldData, newData, oldDriver, newDriver, isMainDriver)) {
+        foreach (var (oldDriver, newDriver) in driverMatches)
+        {
+            var isMainDriver = newDriver.Place == newData.Position;
+            if (eventChecker(oldData, newData, oldDriver, newDriver, isMainDriver))
+            {
                 eventHandlerGetter()?.Invoke(this, new DriverEventArgs(oldData, newData, newDriver, isMainDriver));
             }
         }
     }
 }
 
-public class DriverModeSwitchListener : IEventRaiser {
+public class DriverModeSwitchListener : IEventRaiser
+{
     private readonly Func<EventHandler<DriverEventArgs>?> enterModeHandler;
     private readonly Func<EventHandler<DriverEventArgs>?> exitModeHandler;
-    private readonly Func<R3EData, DriverData, bool> modeChecker;
+    private readonly Func<Shared, DriverData, bool> modeChecker;
     private readonly bool raiseOnStart;
 
-    public DriverModeSwitchListener(Func<EventHandler<DriverEventArgs>?> enterModeHandler, Func<EventHandler<DriverEventArgs>?> exitModeHandler, Func<R3EData, DriverData, bool> modeChecker, bool raiseOnStart = false) {
+    public DriverModeSwitchListener(Func<EventHandler<DriverEventArgs>?> enterModeHandler, Func<EventHandler<DriverEventArgs>?> exitModeHandler, Func<Shared, DriverData, bool> modeChecker, bool raiseOnStart = false)
+    {
         this.enterModeHandler = enterModeHandler;
         this.exitModeHandler = exitModeHandler;
         this.modeChecker = modeChecker;
         this.raiseOnStart = raiseOnStart;
     }
 
-    public void MaybeRaise(EventService service) {
+    public void MaybeRaise(EventService service)
+    {
         var newData = service.NewData!.Value;
-        if (service.OldData == null && raiseOnStart) {
-            foreach (var driver in newData.driverData) {
-                var isMainDriver = driver.place == newData.position;
-                if (modeChecker(newData, driver)) {
+        if (service.OldData == null && raiseOnStart)
+        {
+            foreach (var driver in newData.DriverData)
+            {
+                var isMainDriver = driver.Place == newData.Position;
+                if (modeChecker(newData, driver))
+                {
                     enterModeHandler()?.Invoke(this, new DriverEventArgs(null, newData, driver, isMainDriver));
-                } else {
+                }
+                else
+                {
                     exitModeHandler()?.Invoke(this, new DriverEventArgs(null, newData, driver, isMainDriver));
                 }
             }
-        } else if (service.OldData != null) {
+        }
+        else if (service.OldData != null)
+        {
             var oldData = service.OldData!.Value;
             var drivers = service.DriverMatches!;
 
-            foreach (var (oldDriver, newDriver) in drivers) {
-                var isMainDriver = newDriver.place == newData.position;
-                if (!modeChecker(oldData, oldDriver) && modeChecker(newData, newDriver)) {
+            foreach (var (oldDriver, newDriver) in drivers)
+            {
+                var isMainDriver = newDriver.Place == newData.Position;
+                if (!modeChecker(oldData, oldDriver) && modeChecker(newData, newDriver))
+                {
                     enterModeHandler()?.Invoke(this, new DriverEventArgs(oldData, newData, newDriver, isMainDriver));
-                } else if (modeChecker(oldData, oldDriver) && !modeChecker(newData, newDriver)) {
+                }
+                else if (modeChecker(oldData, oldDriver) && !modeChecker(newData, newDriver))
+                {
                     exitModeHandler()?.Invoke(this, new DriverEventArgs(oldData, newData, newDriver, isMainDriver));
                 }
             }

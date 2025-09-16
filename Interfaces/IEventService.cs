@@ -1,4 +1,3 @@
-using Newtonsoft.Json;
 using R3E;
 using R3E.Data;
 
@@ -26,33 +25,39 @@ public interface IEventService
     event EventHandler<BaseEventArgs>? PushToPassDeactivate;
     event EventHandler<BaseEventArgs>? PushToPassReady;
 
-    ICollection<EventLog> Cycle(R3EData data);
-    void MainDriverChanged(R3EData data, DriverData driver);
+    ICollection<EventLog> Cycle(Shared data);
+    void MainDriverChanged(Shared data, DriverData driver);
 }
 
-public class BaseEventArgs : EventArgs {
-    public BaseEventArgs(R3EData? oldData, R3EData newData) {
+public class BaseEventArgs : EventArgs
+{
+    public BaseEventArgs(Shared? oldData, Shared newData)
+    {
         OldData = oldData;
         NewData = newData;
     }
-    
-    public R3EData? OldData { get; }
-    public R3EData? NewData { get; }
+
+    public Shared? OldData { get; }
+    public Shared? NewData { get; }
 }
 
-public class ValueEventArgs<T> : BaseEventArgs where T : struct {
-    public ValueEventArgs(R3EData? oldData, R3EData newData, T? oldValue, T newValue) : base(oldData, newData) {
+public class ValueEventArgs<T> : BaseEventArgs where T : struct
+{
+    public ValueEventArgs(Shared? oldData, Shared newData, T? oldValue, T newValue) : base(oldData, newData)
+    {
         OldValue = oldValue;
         NewValue = newValue;
     }
 
     public T? OldValue { get; }
     public T NewValue { get; }
-    
+
 }
 
-public class DriverEventArgs : BaseEventArgs {
-    public DriverEventArgs(R3EData? oldData, R3EData newData, DriverData driver, bool isMainDriver) : base(oldData, newData) {
+public class DriverEventArgs : BaseEventArgs
+{
+    public DriverEventArgs(Shared? oldData, Shared newData, DriverData driver, bool isMainDriver) : base(oldData, newData)
+    {
         Driver = driver;
         IsMainDriver = isMainDriver;
     }
@@ -62,29 +67,35 @@ public class DriverEventArgs : BaseEventArgs {
 }
 
 
-public class EventLog {
+public class EventLog
+{
     public string EventName { get; }
 
-    public EventLog(string eventName) {
+    public EventLog(string eventName)
+    {
         EventName = eventName;
     }
 }
 
-public class ValueEventLog<T> : EventLog where T : struct {
+public class ValueEventLog<T> : EventLog where T : struct
+{
     public T? OldValue { get; }
     public T NewValue { get; }
 
-    public ValueEventLog(string eventName, T? oldValue, T newValue) : base(eventName) {
+    public ValueEventLog(string eventName, T? oldValue, T newValue) : base(eventName)
+    {
         OldValue = oldValue;
         NewValue = newValue;
     }
 }
 
-public class DriverEventLog : EventLog {
+public class DriverEventLog : EventLog
+{
     public DriverData Driver { get; }
     public bool IsMainDriver { get; }
 
-    public DriverEventLog(string eventName, DriverData driver, bool isMainDriver) : base(eventName) {
+    public DriverEventLog(string eventName, DriverData driver, bool isMainDriver) : base(eventName)
+    {
         Driver = driver;
         IsMainDriver = isMainDriver;
     }
